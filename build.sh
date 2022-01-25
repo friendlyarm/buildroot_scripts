@@ -17,18 +17,19 @@ cd ../
 TOP_DIR=$(pwd)
 
 SDFUSE_DIR=${TOP_DIR}/scripts/sd-fuse
+CURR=`readlink -f ./.current`
 
 firsttime_usage()
 {
     echo ""
     echo "# select board: "
-    ALL_MK=`find ./device/friendlyelec -type f -name "*.mk" -printf "%f\n"`
+    ALL_MK=`find ${CURR} -type f -name "*.mk" -printf "%f\n"`
     for mk in ${ALL_MK}; do
         if [ ${mk} != "base.mk" ]; then
             echo "  ./build.sh $mk"
         fi
     done
-    ALL_MK_LINK=`find ./device/friendlyelec -type l -name "*.mk" -printf "%f\n"`
+    ALL_MK_LINK=`find ${CURR} -type l -name "*.mk" -printf "%f\n"`
     for mk in ${ALL_MK_LINK}; do
         if [ ${mk} != "base.mk" ]; then
             echo "  ./build.sh $mk"
@@ -363,14 +364,15 @@ declare -a BUILDROOT_PACKAGES=("")
 declare -a BUILDROOT_FILES=("")
 
 MK_LINK=".current_config.mk"
-FOUND_MK_FILE=`find device/friendlyelec -name ${1} | wc -l`
+FOUND_MK_FILE=`find ${CURR} -name ${1} | wc -l`
 if [ $FOUND_MK_FILE -gt 0 ]; then
-    MK_FILE=`ls device/friendlyelec/*/${1}`
+    MK_FILE=`ls ${CURR}/${1}`
     echo "using config ${MK_FILE}"
     rm -f ${MK_LINK}
     ln -s ${MK_FILE} ${MK_LINK}
     source ${MK_LINK}
     install_toolchain
+
     build_all
 else
     BUILD_TARGET=${1}
@@ -378,11 +380,11 @@ else
     if [ -e "${MK_LINK}" ]; then
         source ${MK_LINK}
 
-            # display var
-            # ( set -o posix ; set ) | less
+        # display var
+        # ( set -o posix ; set ) | less
     else
         echo "no .current_config.mk, please select a board first."
-            firsttime_usage
+        firsttime_usage
         exit 1
     fi
     install_toolchain
