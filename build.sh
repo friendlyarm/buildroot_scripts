@@ -319,8 +319,8 @@ function build_sdimg(){
     prepare_image_for_friendlyelec_eflasher ${TARGET_IMAGE_DIRNAME} && (cd ${SDFUSE_DIR} && {
     ./mk-sd-image.sh ${TARGET_IMAGE_DIRNAME} ${TARGET_SD_RAW_FILENAME}
         (cd out && {
-        rm -f ${TARGET_SD_RAW_FILENAME}.zip
-        zip ${TARGET_SD_RAW_FILENAME}.zip ${TARGET_SD_RAW_FILENAME}
+        rm -f ${TARGET_SD_RAW_FILENAME}.gz
+        gzip --keep ${TARGET_SD_RAW_FILENAME}
     })
         echo "-----------------------------------------"
         echo "Run the following command for sdcard install:"
