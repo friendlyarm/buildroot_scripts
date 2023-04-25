@@ -346,7 +346,7 @@ function install_toolchain() {
 function build_emmcimg() {
     prepare_image_for_friendlyelec_eflasher ${TARGET_IMAGE_DIRNAME} && (cd ${SDFUSE_DIR} && {
         # auto download eflasher image
-        if [ ! -f "eflasher/partmap.txt" ]; then
+        if [ ! -f "eflasher/partmap.txt" -a ! -f "eflasher/parameter.txt" ]; then
             ./tools/get_rom.sh eflasher
         fi
         ./mk-emmc-image.sh ${TARGET_IMAGE_DIRNAME} filename=${TARGET_EFLASHER_RAW_FILENAME} autostart=yes
