@@ -12,31 +12,39 @@ cd $SCRIPTS_DIR
 cd ../
 TOP_DIR=$(pwd)
 
-TARGET_BUILDROOT_CONFIG=$1
-BUILDROOT_SRC_PATHNAME=$2
-echo "============Start building friendlywrt============"
-echo "TARGET_BUILDROOT_CONFIG = $TARGET_BUILDROOT_CONFIG"
-echo "BUILDROOT_SRC_PATHNAME = $BUILDROOT_SRC_PATHNAME"
-echo "=========================================="
-
-cd ${TOP_DIR}/${BUILDROOT_SRC_PATHNAME}
+cd ${TOP_DIR}/${BUILDROOT_SRC}
 export FORCE_UNSAFE_CONFIGURE=1
-if [ ! -f .config ]; then
+if [ ! -f ${BUILDROOT_OUTDIR}/.config ]; then
     make ${TARGET_BUILDROOT_CONFIG}
 else
     echo "using .config file"
 fi
+unset FORCE_UNSAFE_CONFIGURE
 
 make source -j$(nproc)
 RET=$?
 if [ $RET -ne 0 ]; then
-    exit 1
+	make source -j1
+	RET=$?
+	if [ $RET -ne 0 ]; then
+		exit 1
+	fi
 fi
 
-make -j$(nproc) V=s
+rm -f /tmp/buildroot-make-j$(nproc)-log.txt
+rm -f /tmp/buildroot-make-j1-log.txt
+env > /tmp/buildroot-make-env.txt
+
+make -j$(nproc) 2>&1 | tee /tmp/buildroot-make-j$(nproc)-log.txt
 RET=$?
-if [ $RET -ne 0 ]; then
-    exit 1
+if [ $RET -eq 0 ]; then
+	exit 0
 fi
 
-exit 0
+make -j1 V=s 2>&1 | tee /tmp/buildroot-make-j1-log.txt
+RET=$?
+if [ $RET -eq 0 ]; then
+	exit 0
+fi
+
+exit 1

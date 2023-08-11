@@ -9,14 +9,17 @@ true ${EXTERNAL_ROOTFS_DIR:=}
 SCRIPTS_DIR=$(cd `dirname $0`; pwd)
 if [ -h $0 ]
 then
-        CMD=$(readlink $0)
-        SCRIPTS_DIR=$(dirname $CMD)
+    CMD=$(readlink $0)
+    SCRIPTS_DIR=$(dirname $CMD)
 fi
 cd $SCRIPTS_DIR
 cd ../
 TOP_DIR=$(pwd)
 
 SDFUSE_DIR=${TOP_DIR}/scripts/sd-fuse
+# These arrays will be populated in the.mk file
+declare -a BUILDROOT_PACKAGES=("")
+declare -a BUILDROOT_FILES=("")
 CURR=`readlink -f ./.current`
 
 firsttime_usage()
@@ -129,7 +132,9 @@ function build_buildroot(){
     echo "TARGET_BUILDROOT_CONFIG=$TARGET_BUILDROOT_CONFIG"
     echo "BUILDROOT_SRC=$BUILDROOT_SRC"
     echo "========================================="
-    /usr/bin/time -f "you take %E to build buildroot" $SCRIPTS_DIR/mk-buildroot.sh $TARGET_BUILDROOT_CONFIG $BUILDROOT_SRC
+    TARGET_BUILDROOT_CONFIG=$TARGET_BUILDROOT_CONFIG \
+		BUILDROOT_SRC=$BUILDROOT_SRC \
+		BUILDROOT_OUTDIR=$BUILDROOT_OUTDIR $SCRIPTS_DIR/mk-buildroot.sh
     if [ $? -eq 0 ]; then
         echo "====Building buildroot ok!===="
     else
@@ -187,18 +192,16 @@ function prepare_image_for_friendlyelec_eflasher(){
         rm -rf ${SDFUSE_DIR}/out/rootfs.*
         ROOTFS_DIR=$(mktemp -d ${SDFUSE_DIR}/out/rootfs.XXXXXXXXX)
     fi
-    log_info "Extracting ${TOP_DIR}/${BUILDROOT_SRC}/output/images/rootfs.tar to ${ROOTFS_DIR}/"
-    tar -C ${ROOTFS_DIR}/ -xf ${TOP_DIR}/${BUILDROOT_SRC}/output/images/rootfs.tar
+    log_info "Extracting ${TOP_DIR}/${BUILDROOT_SRC}/${BUILDROOT_OUTDIR}/images/rootfs.tar to ${ROOTFS_DIR}/"
+    tar -C ${ROOTFS_DIR}/ -xf ${TOP_DIR}/${BUILDROOT_SRC}/${BUILDROOT_OUTDIR}/images/rootfs.tar
 
     # oem
     [ -d ${ROOTFS_DIR}/oem ] || mkdir ${ROOTFS_DIR}/oem
-    cp -af ${TOP_DIR}/device/friendlyelec/oem/oem_normal/* ${ROOTFS_DIR}/oem
     # userdata
     [ -d ${ROOTFS_DIR}/userdata ] || mkdir ${ROOTFS_DIR}/userdata
-    cp -af ${TOP_DIR}/device/friendlyelec/userdata/userdata_normal/* ${ROOTFS_DIR}/userdata
     # misc
     rm -f ${ROOTFS_DIR}/misc
-    mkdir ${ROOTFS_DIR}/misc
+    mkdir -p ${ROOTFS_DIR}/misc
     # remove /dev/console
     rm -f ${ROOTFS_DIR}/dev/console
 
@@ -330,23 +333,16 @@ function build_sdimg(){
 }
 
 function install_toolchain() {
-    if [ ! -d /opt/FriendlyARM/toolchain/4.9.3 ]; then
-                log_info "installing toolchain: arm-linux-gcc 4.9.3"
-                sudo su -c "mkdir -p /opt/FriendlyARM/toolchain && cat ${TOP_DIR}/toolchain/gcc-x64/toolchain-4.9.3-armhf.tar.gz* | sudo tar xz -C /"
-        fi
-
-    if [ ! -d /opt/FriendlyARM/toolchain/6.4-aarch64 ]; then
-        log_info "installing toolchain: aarch-linux-gcc 6.4"
-        sudo su -c "mkdir -p /opt/FriendlyARM/toolchain && cat ${TOP_DIR}/toolchain/gcc-x64/toolchain-6.4-aarch64.tar.gz* | sudo tar xz -C /"
-    fi
-
-
+	if [ ! -d /opt/FriendlyARM/toolchain/11.3-aarch64 ]; then
+		log_info "installing toolchain: aarch-linux-gcc 11.3"
+		sudo su -c "mkdir -p /opt/FriendlyARM/toolchain && tar xf $TOP_DIR/toolchain/gcc-x64/toolchain-11.3-aarch64.tar.xz -C /"
+	fi
 }
 
 function build_emmcimg() {
     prepare_image_for_friendlyelec_eflasher ${TARGET_IMAGE_DIRNAME} && (cd ${SDFUSE_DIR} && {
         # auto download eflasher image
-        if [ ! -f "eflasher/partmap.txt" -a ! -f "eflasher/parameter.txt" ]; then
+        if [ ! -f "eflasher/rootfs.img" ]; then
             ./tools/get_rom.sh eflasher
         fi
         ./mk-emmc-image.sh ${TARGET_IMAGE_DIRNAME} filename=${TARGET_EFLASHER_RAW_FILENAME} autostart=yes
@@ -359,9 +355,6 @@ function build_emmcimg() {
 
 ##############################################
 
-# These arrays will be populated in the.mk file
-declare -a BUILDROOT_PACKAGES=("")
-declare -a BUILDROOT_FILES=("")
 
 MK_LINK=".current_config.mk"
 FOUND_MK_FILE=`find ${CURR} -name ${1} | wc -l`
@@ -392,7 +385,7 @@ else
     #=========================
     # build target
     #=========================
-    if [ $BUILD_TARGET == uboot ];then
+    if [ $BUILD_TARGET == uboot -o $BUILD_TARGET == u-boot ];then
         build_uboot
         exit 0
     elif [ $BUILD_TARGET == kernel ];then
@@ -404,18 +397,18 @@ else
     elif [ $BUILD_TARGET == sd-img ]; then
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
-	    echo "Re-running script under sudo..."
-	    sudo "$0" "$@"
-	    exit
+        echo "Re-running script under sudo..."
+        sudo "$0" "$@"
+        exit
         fi
         build_sdimg
         exit 0
     elif [ $BUILD_TARGET == emmc-img ]; then
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
-	    echo "Re-running script under sudo..."
-	    sudo "$0" "$@"
-	    exit
+            echo "Re-running script under sudo..."
+            sudo "$0" "$@"
+            exit
         fi
         build_emmcimg
         exit 0
@@ -425,9 +418,9 @@ else
     elif [ $BUILD_TARGET == clean ];then
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
-	    echo "Re-running script under sudo..."
-	    sudo "$0" "$@"
-	    exit
+            echo "Re-running script under sudo..."
+            sudo "$0" "$@"
+            exit
         fi
         clean_old_images
         exit 0
