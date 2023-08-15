@@ -31,17 +31,14 @@ if [ $RET -ne 0 ]; then
 	fi
 fi
 
-rm -f /tmp/buildroot-make-j$(nproc)-log.txt
-rm -f /tmp/buildroot-make-j1-log.txt
-env > /tmp/buildroot-make-env.txt
-
-make -j$(nproc) 2>&1 | tee /tmp/buildroot-make-j$(nproc)-log.txt
+set +e
+make -j$(nproc)
 RET=$?
 if [ $RET -eq 0 ]; then
 	exit 0
 fi
 
-make -j1 V=s 2>&1 | tee /tmp/buildroot-make-j1-log.txt
+make -j1 V=s
 RET=$?
 if [ $RET -eq 0 ]; then
 	exit 0

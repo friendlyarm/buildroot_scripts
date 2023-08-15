@@ -147,6 +147,12 @@ function build_all() {
     build_uboot
     build_kernel
     build_buildroot
+    # Automatically re-run script under sudo if not root
+    if [ $(id -u) -ne 0 ]; then
+	    echo "Re-running script under sudo..."
+	    sudo "$0" "$@"
+	    exit
+    fi
     build_sdimg
 }
 
@@ -397,9 +403,9 @@ else
     elif [ $BUILD_TARGET == sd-img ]; then
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
-        echo "Re-running script under sudo..."
-        sudo "$0" "$@"
-        exit
+            echo "Re-running script under sudo..."
+            sudo "$0" "$@"
+            exit
         fi
         build_sdimg
         exit 0
