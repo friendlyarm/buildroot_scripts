@@ -216,11 +216,14 @@ function prepare_image_for_friendlyelec_eflasher(){
         # apply patch to rootfs
         if [ ! -z ${BUILDROOT_FILES[$i]} ]; then
             log_info "Applying ${BUILDROOT_FILES[$i]} to ${ROOTFS_DIR}"
-        if [ -f ${TOP_DIR}/${BUILDROOT_FILES[$i]}/install.sh ]; then
-        (cd ${TOP_DIR}/${BUILDROOT_FILES[$i]} && {
-            ./install.sh ${ROOTFS_DIR}
-        })
-        else
+            if [ -f ${TOP_DIR}/${BUILDROOT_FILES[$i]}/install.sh ]; then
+                (cd ${TOP_DIR}/${BUILDROOT_FILES[$i]} && {
+                    ./install.sh ${ROOTFS_DIR}
+                    if [ $? -ne 0 ]; then
+                        log_error "failed to apply rootfs overlay: ${TOP_DIR}/${BUILDROOT_FILES[$i]}"
+                    fi
+                })
+            else
                 rsync -a --no-o --no-g --exclude='.git' ${TOP_DIR}/${BUILDROOT_FILES[$i]}/* ${ROOTFS_DIR}/
             fi
         fi
