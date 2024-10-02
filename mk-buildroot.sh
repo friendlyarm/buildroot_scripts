@@ -44,4 +44,6 @@ if [ $RET -eq 0 ]; then
 	exit 0
 fi
 
+echo "fail to build buildroot, try: "
+echo "  (cd buildroot && make source -j1 && make -j1 V=s)"
 exit 1

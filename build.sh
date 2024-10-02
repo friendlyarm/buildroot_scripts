@@ -114,7 +114,7 @@ function build_kernel(){
     echo "=========================================="
 
     (cd ${SDFUSE_DIR} && {
-        DISABLE_MKIMG=1 KCFG=${TARGET_KERNEL_CONFIG} KERNEL_SRC=${TOP_DIR}/kernel ./build-kernel.sh ${TARGET_OSNAME}
+        SKIP_DISTCLEAN=1 DISABLE_MKIMG=1 KCFG=${TARGET_KERNEL_CONFIG} KERNEL_SRC=${TOP_DIR}/kernel ./build-kernel.sh ${TARGET_OSNAME}
     })
 
     if [ $? -eq 0 ]; then
@@ -147,13 +147,6 @@ function build_all() {
     build_uboot
     build_kernel
     build_buildroot
-    # Automatically re-run script under sudo if not root
-    if [ $(id -u) -ne 0 ]; then
-	    echo "Re-running script under sudo..."
-	    sudo "$0" "$@"
-	    exit
-    fi
-    build_sdimg
 }
 
 function clean_old_images(){
@@ -367,6 +360,7 @@ function build_emmcimg() {
 
 MK_LINK=".current_config.mk"
 FOUND_MK_FILE=`find ${CURR} -name ${1} | wc -l`
+
 if [ $FOUND_MK_FILE -gt 0 ]; then
     MK_FILE=`ls ${CURR}/${1}`
     echo "using config ${MK_FILE}"
@@ -374,11 +368,16 @@ if [ $FOUND_MK_FILE -gt 0 ]; then
     ln -s ${MK_FILE} ${MK_LINK}
     source ${MK_LINK}
     install_toolchain
-
     build_all
+    # Automatically re-run script under sudo if not root
+    if [ $(id -u) -ne 0 ]; then
+	    echo "Re-running script under sudo..."
+	    sudo --preserve-env "$0" "$@"
+	    exit
+    fi
+    build_sdimg
 else
     BUILD_TARGET=${1}
-
     if [ -e "${MK_LINK}" ]; then
         source ${MK_LINK}
 
@@ -407,7 +406,7 @@ else
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
             echo "Re-running script under sudo..."
-            sudo "$0" "$@"
+            sudo --preserve-env "$0" "$@"
             exit
         fi
         build_sdimg
@@ -416,19 +415,26 @@ else
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
             echo "Re-running script under sudo..."
-            sudo "$0" "$@"
+            sudo --preserve-env "$0" "$@"
             exit
         fi
         build_emmcimg
         exit 0
     elif [ $BUILD_TARGET == all ];then
         build_all
+        # Automatically re-run script under sudo if not root
+        if [ $(id -u) -ne 0 ]; then
+            echo "Re-running script under sudo..."
+            sudo --preserve-env "$0" "$@"
+            exit
+        fi
+        build_sdimg
         exit 0
     elif [ $BUILD_TARGET == clean ];then
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
             echo "Re-running script under sudo..."
-            sudo "$0" "$@"
+            sudo --preserve-env "$0" "$@"
             exit
         fi
         clean_old_images
@@ -437,7 +443,7 @@ else
         # Automatically re-run script under sudo if not root
         if [ $(id -u) -ne 0 ]; then
             echo "Re-running script under sudo..."
-            sudo "$0" "$@"
+            sudo --preserve-env "$0" "$@"
             exit
         fi
         clean_all
